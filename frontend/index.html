@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>PEMS-BAY Traffic Monitor</title>
+
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+
+  <style>
+    :root {
+      --bg:       #07090f;
+      --panel:    #0e1420;
+      --card:     #141c2e;
+      --border:   #1c2a42;
+      --border2:  #253550;
+      --text:     #d4dff0;
+      --muted:    #4d6080;
+      --accent:   #3b9eff;
+      --free:     #2ecc71;
+      --light:    #9bdb4d;
+      --moderate: #f39c12;
+      --heavy:    #e74c3c;
+    }
+
+    *{ box-sizing:border-box; margin:0; padding:0; }
+    html,body{ height:100%; overflow:hidden; background:var(--bg); color:var(--text); font-family:'Inter',sans-serif; }
+
+    /* ── Topbar ── */
+    .topbar{
+      height:54px; background:var(--panel);
+      border-bottom:1px solid var(--border);
+      display:flex; align-items:center;
+      padding:0 20px; gap:16px; flex-shrink:0; z-index:999;
+    }
+    .brand{ display:flex; align-items:center; gap:10px; margin-right:auto; }
+    .brand-icon{
+      width:32px; height:32px; border-radius:8px;
+      background:linear-gradient(135deg,#3b9eff,#6c5ce7);
+      display:flex; align-items:center; justify-content:center; font-size:16px;
+    }
+    .brand-name{ font-family:'Space Mono',monospace; font-size:14px; font-weight:700; }
+    .brand-name span{ color:var(--accent); }
+
+    .kpi{
+      display:flex; align-items:center; gap:6px;
+      background:var(--card); border:1px solid var(--border2);
+      border-radius:7px; padding:5px 14px;
+    }
+    .kpi-v{ font-family:'Space Mono',monospace; font-size:16px; font-weight:700; color:var(--accent); }
+    .kpi-l{ font-size:10px; color:var(--muted); text-transform:uppercase; letter-spacing:.07em; }
+
+    .live{ display:flex; align-items:center; gap:7px; }
+    .dot{
+      width:8px; height:8px; border-radius:50%;
+      background:var(--free); box-shadow:0 0 6px var(--free);
+      animation:blink 2s infinite;
+    }
+    @keyframes blink{ 0%,100%{opacity:1}50%{opacity:.3} }
+    .live-txt{ font-size:11px; color:var(--muted); }
+
+    /* ── Layout ── */
+    .workspace{ display:flex; height:calc(100vh - 54px); overflow:hidden; }
+
+    /* ── Sidebar ── */
+    .sidebar{
+      width:270px; background:var(--panel);
+      border-right:1px solid var(--border);
+      display:flex; flex-direction:column;
+      flex-shrink:0; overflow:hidden;
+    }
+    .sidebar-head{
+      padding:10px 14px; font-size:10px; font-weight:600;
+      text-transform:uppercase; letter-spacing:.12em;
+      color:var(--muted); border-bottom:1px solid var(--border);
+      display:flex; justify-content:space-between; align-items:center;
+    }
+    .filter-input{
+      background:var(--card); border:1px solid var(--border2);
+      border-radius:5px; color:var(--text); font-size:11px;
+      padding:3px 8px; width:110px; font-family:'Inter',sans-serif;
+    }
+    .filter-input::placeholder{ color:var(--muted); }
+    .filter-input:focus{ outline:none; border-color:var(--accent); }
+
+    .sensor-list{ flex:1; overflow-y:auto; }
+    .sensor-list::-webkit-scrollbar{ width:3px; }
+    .sensor-list::-webkit-scrollbar-thumb{ background:var(--border2); }
+
+    .sitem{
+      display:flex; align-items:center; gap:9px;
+      padding:8px 14px; border-bottom:1px solid var(--border);
+      cursor:pointer; transition:background .1s;
+    }
+    .sitem:hover{ background:rgba(59,158,255,.04); }
+    .sitem.active{ background:rgba(59,158,255,.09); border-left:2px solid var(--accent); }
+
+    .sdot{ width:9px; height:9px; border-radius:50%; flex-shrink:0; }
+    .sinfo{ flex:1; min-width:0; }
+    .sname{ font-size:11px; font-weight:500; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .smeta{ font-size:9px; color:var(--muted); font-family:'Space Mono',monospace; }
+    .sspd{ font-family:'Space Mono',monospace; font-size:12px; font-weight:700; flex-shrink:0; }
+
+    /* ── Map (prend tout l'espace restant) ── */
+    .map-wrap{ flex:1; position:relative; }
+    #map{ width:100%; height:100%; }
+
+    .legend{
+      position:absolute; bottom:28px; right:10px;
+      background:var(--panel); border:1px solid var(--border2);
+      border-radius:8px; padding:10px 14px; z-index:998; font-size:11px;
+    }
+    .legend h4{ font-size:9px; text-transform:uppercase; letter-spacing:.1em; color:var(--muted); margin-bottom:7px; }
+    .lrow{ display:flex; align-items:center; gap:7px; margin-bottom:4px; }
+    .ldot{ width:10px; height:10px; border-radius:50%; }
+
+    /* ── Overlay ── */
+    .overlay{
+      position:absolute; inset:0; background:var(--bg);
+      display:flex; flex-direction:column; align-items:center; justify-content:center; z-index:9999;
+    }
+    .ring{
+      width:44px; height:44px; border:3px solid var(--border2);
+      border-top-color:var(--accent); border-radius:50%;
+      animation:spin .7s linear infinite; margin-bottom:14px;
+    }
+    @keyframes spin{ to{transform:rotate(360deg)} }
+    .overlay-txt{ font-family:'Space Mono',monospace; font-size:12px; color:var(--muted); }
+
+    /* ── Leaflet popup ── */
+    .leaflet-popup-content-wrapper{
+      background:var(--panel) !important; color:var(--text) !important;
+      border:1px solid var(--border2) !important; border-radius:8px !important;
+      box-shadow:0 8px 24px rgba(0,0,0,.6) !important;
+      font-family:'Inter',sans-serif !important;
+    }
+    .leaflet-popup-tip{ background:var(--panel) !important; }
+    .pop h3{ font-size:12px; color:var(--accent); margin-bottom:8px; font-weight:600; }
+    .pop-row{ display:flex; justify-content:space-between; font-size:11px; color:var(--muted); padding:2px 0; }
+    .pop-row b{ color:var(--text); font-family:'Space Mono',monospace; font-weight:500; }
+    .pbadge{
+      display:inline-block; padding:2px 8px; border-radius:4px;
+      font-size:9px; font-weight:700; text-transform:uppercase;
+      letter-spacing:.06em; margin-top:6px;
+    }
+  </style>
+</head>
+<body>
+
+<!-- Topbar -->
+<div class="topbar">
+  <div class="brand">
+    <div class="brand-icon">🗺</div>
+    <div class="brand-name">PEMS<span>-BAY</span> &nbsp;·&nbsp; Node.js + MongoDB</div>
+  </div>
+  <div class="kpi"><div class="kpi-v" id="k-sensors">—</div><div class="kpi-l">Capteurs</div></div>
+  <div class="kpi"><div class="kpi-v" id="k-records">—</div><div class="kpi-l">Records MongoDB</div></div>
+  <div class="kpi"><div class="kpi-v" id="k-speed">—</div><div class="kpi-l">Vit. moy. mph</div></div>
+  <div class="live">
+    <div class="dot" id="dot"></div>
+    <span class="live-txt" id="live-txt">Connexion…</span>
+  </div>
+</div>
+
+<!-- Workspace : sidebar + carte uniquement -->
+<div class="workspace">
+
+  <!-- Sidebar capteurs -->
+  <div class="sidebar">
+    <div class="sidebar-head">
+      <span>🚦 Capteurs</span>
+      <input class="filter-input" id="filter" placeholder="Filtrer…" oninput="filterSensors(this.value)"/>
+    </div>
+    <div class="sensor-list" id="sensor-list"></div>
+  </div>
+
+  <!-- Carte OpenStreetMap -->
+  <div class="map-wrap">
+    <div class="overlay" id="overlay">
+      <div class="ring"></div>
+      <div class="overlay-txt" id="overlay-txt">Lecture MongoDB…</div>
+    </div>
+    <div id="map"></div>
+    <div class="legend">
+      <h4>Congestion</h4>
+      <div class="lrow"><div class="ldot" style="background:var(--free)"></div>Fluide &gt; 60 mph</div>
+      <div class="lrow"><div class="ldot" style="background:var(--light)"></div>Léger 45–60</div>
+      <div class="lrow"><div class="ldot" style="background:var(--moderate)"></div>Modéré 25–45</div>
+      <div class="lrow"><div class="ldot" style="background:var(--heavy)"></div>Dense &lt; 25</div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const API = '/api';
+
+const C = {
+  free_flow: '#2ecc71',
+  light:     '#9bdb4d',
+  moderate:  '#f39c12',
+  heavy:     '#e74c3c',
+};
+
+const LABELS = {
+  free_flow: 'Fluide',
+  light:     'Léger',
+  moderate:  'Modéré',
+  heavy:     'Dense',
+};
+
+let map, markers = {}, allSensors = [];
+
+// ── Init Leaflet avec OpenStreetMap ───────────────────────
+function initMap() {
+  map = L.map('map', { center: [37.45, -122.05], zoom: 10, zoomControl: false });
+
+  // OpenStreetMap standard
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+    maxZoom: 19,
+  }).addTo(map);
+
+  L.control.zoom({ position: 'topright' }).addTo(map);
+}
+
+// ── Icône capteur ─────────────────────────────────────────
+function makeIcon(speed, cong) {
+  const color = C[cong] || '#888';
+  const s = Math.round(speed || 0);
+  return L.divIcon({
+    html: `<div style="
+      width:24px;height:24px;border-radius:50%;
+      background:${color}30;border:2px solid ${color};
+      box-shadow:0 0 8px ${color}66;
+      display:flex;align-items:center;justify-content:center;
+      font-family:monospace;font-size:8px;font-weight:700;color:${color};">
+        ${s}
+      </div>`,
+    className: '', iconSize: [24,24], iconAnchor: [12,12],
+  });
+}
+
+// ── Charger capteurs depuis MongoDB via API ───────────────
+async function loadSensors() {
+  setStatus('Lecture MongoDB…', false);
+  try {
+    const res  = await fetch(`${API}/sensors`);
+    allSensors = await res.json();
+    renderList(allSensors);
+    renderMarkers(allSensors);
+    await loadStats();
+    document.getElementById('overlay').style.display = 'none';
+    setStatus(`${allSensors.length} capteurs • Live`, true);
+  } catch (e) {
+    document.getElementById('overlay-txt').textContent = '⚠ Backend inaccessible';
+    setStatus('Erreur connexion', false);
+  }
+}
+
+async function loadStats() {
+  try {
+    const res  = await fetch(`${API}/stats`);
+    const data = await res.json();
+    document.getElementById('k-sensors').textContent = data.total_sensors;
+    document.getElementById('k-records').textContent = '—';
+    document.getElementById('k-speed').textContent = '—';
+  } catch (_) {}
+}
+
+// ── Sidebar ───────────────────────────────────────────────
+function renderList(sensors) {
+  const el = document.getElementById('sensor-list');
+  el.innerHTML = '';
+  sensors.forEach(s => {
+    const color = '#9bdb4d';  // couleur par défaut (lights)
+
+    const div = document.createElement('div');
+    div.className  = 'sitem';
+    div.dataset.id = s.sensor_id;
+    div.innerHTML  = `
+      <div class="sdot" style="background:${color};box-shadow:0 0 5px ${color}88"></div>
+      <div class="sinfo">
+        <div class="sname">${s.highway} ${s.direction || ''} — ${s.sensor_id}</div>
+        <div class="smeta">${s.lanes ? s.lanes + ' voies' : ''}</div>
+      </div>
+      <div class="sspd" style="color:${color}">📍</div>`;
+
+    div.onclick = () => focusSensor(s.sensor_id);
+    el.appendChild(div);
+  });
+}
+
+function filterSensors(q) {
+  const filtered = allSensors.filter(s =>
+    s.sensor_id.includes(q) ||
+    (s.highway  || '').toLowerCase().includes(q.toLowerCase()) ||
+    (s.direction|| '').toLowerCase().includes(q.toLowerCase())
+  );
+  renderList(filtered);
+}
+
+// ── Markers sur la carte ──────────────────────────────────
+function renderMarkers(sensors) {
+  Object.values(markers).forEach(m => map.removeLayer(m));
+  markers = {};
+
+  sensors.forEach(s => {
+    if (!s.lat || !s.lon) return;
+    const color = '#9bdb4d';  // couleur par défaut (light)
+
+    const m = L.marker([s.lat, s.lon], { icon: makeIcon(0, 'light') });
+
+    m.bindPopup(`
+      <div class="pop">
+        <h3>${s.highway} ${s.direction || ''} — ${s.sensor_id}</h3>
+        <div class="pop-row"><span>Voies</span><b>${s.lanes || 'N/A'}</b></div>
+        <div class="pop-row"><span>Latitude</span><b>${s.lat.toFixed(5)}</b></div>
+        <div class="pop-row"><span>Longitude</span><b>${s.lon.toFixed(5)}</b></div>
+      </div>`, { maxWidth: 230 });
+
+    m.addTo(map);
+    markers[s.sensor_id] = m;
+  });
+}
+
+// ── Clic sur un capteur dans la sidebar ──────────────────
+function focusSensor(id) {
+  const s = allSensors.find(x => x.sensor_id === id);
+  if (!s) return;
+
+  document.querySelectorAll('.sitem').forEach(el =>
+    el.classList.toggle('active', el.dataset.id === id));
+
+  if (s.lat && s.lon) {
+    map.setView([s.lat, s.lon], 14);
+    markers[id]?.openPopup();
+  }
+}
+
+// ── Status ────────────────────────────────────────────────
+function setStatus(msg, ok) {
+  document.getElementById('live-txt').textContent = msg;
+  const d = document.getElementById('dot');
+  d.style.background = ok ? 'var(--free)' : 'var(--heavy)';
+  d.style.boxShadow  = ok ? '0 0 6px var(--free)' : '0 0 6px var(--heavy)';
+}
+
+// ── Auto-refresh 30s ──────────────────────────────────────
+setInterval(async () => {
+  try {
+    const res = await fetch(`${API}/sensors`);
+    allSensors = await res.json();
+    renderList(allSensors);
+    renderMarkers(allSensors);
+  } catch (_) {}
+}, 30000);
+
+initMap();
+loadSensors();
+</script>
+</body>
+</html>
