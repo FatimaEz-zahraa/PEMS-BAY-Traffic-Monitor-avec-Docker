@@ -8,9 +8,6 @@
  *       Colonnes : Sensor ID, Freeway, Direction,
  *                  Postmile, Latitude, Longitude,
  *                  Length (km), Lanes
- *
- *    2. PEMS-BAY.csv  — vitesses mesurées toutes les 5 min
- *       Format : index, timestamp, 400001, 400017, ...
  * ============================================================
  */
 
@@ -129,7 +126,7 @@ async function ingest() {
     return;
   }
 
-  log.info('═══ Début ingestion metadata.csv ═══');
+  log.info('═══ Début ingestion metadata.csv ═══');  // Seulement métadonnées (PEMS-BAY.csv éliminé)
 
   if (!fs.existsSync(DATA_DIR)) {
     log.error(`Répertoire ${DATA_DIR} introuvable !`);
@@ -198,40 +195,36 @@ app.get('/api/sensors', async (req, res) => {
 app.get('/api/sensors/:id/history', async (req, res) => {
   try {
     const sid   = req.params.id;
-    const hours = parseInt(req.query.hours || '24');
+    const hours = parseInt(req.query.hours || '24', 10);
 
     // Trouver la première mesure du capteur
     const first = await db.collection('traffic_records').findOne(
       { sensor_id: sid },
       { sort: { timestamp: 1 }, projection: { timestamp: 1 } }
     );
-    if (!first) return res.json([]);
+    if (!first) return res.json([]);  // Vide si pas de données (PEMS-BAY.csv éliminé)
 
     const since = first.timestamp;
     const until = new Date(since.getTime() + hours * 3600 * 1000);
 
-    const records = await db.col — retourne le capteur seul (pas d'historique de données) */
-app.get('/api/sensors/:id/history', async (req, res) => {
-  try {
-    const sid = req.params.id;
-    const sensor = await db.collection('sensors').findOne(
-      { sensor_id: sid },
-      { projection: { _id: 0 } }
-    );
-    if (!sensor) return res.status(404).json({ error: 'Capteur non trouvé' });
-    res.json(sensor
-    ];
-    const breakdown = await db.collection('traffic_records').aggregate(pipeline).toArray();
-    breakdown.forEach(b => {
-      b.avg_speed = Math.round(b.avg_speed * 100) / 100;
-      b.avg_flow  = Math.round(b.avg_flow  * 100) / 100;
-    });
+    const records = await db.collection('traffic_records')
+      .find({ sensor_id: sid, timestamp: { $gte: since, $lte: until } })
+      .sort({ timestamp: 1 })
+      .toArray();
 
-    res.json({
-      total_records:        await db.collection('traffic_records').countDocuments(),
-      total_sensors:        await db.collection('sensors').countDocuments(),
-      congestion_breakdown: breakdown,
-    });
+    res.json(records);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+
+/** GET /api/stats */
+app.get('/api/stats', async (req, res) => {
+  try {
+    const total_sensors = await db.collection('sensors').countDocuments();
+    const total_records = await db.collection('traffic_records').countDocuments();  // 0 si PEMS-BAY.csv éliminé
+    res.json({ total_sensors, total_records });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }

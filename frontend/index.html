@@ -153,11 +153,10 @@
 <div class="topbar">
   <div class="brand">
     <div class="brand-icon">🗺</div>
-    <div class="brand-name">PEMS<span>-BAY</span> &nbsp;·&nbsp; Node.js + MongoDB</div>
+    <div class="brand-name">PEMS<span>-BAY</span> Traffic Monitor</div>
   </div>
   <div class="kpi"><div class="kpi-v" id="k-sensors">—</div><div class="kpi-l">Capteurs</div></div>
   <div class="kpi"><div class="kpi-v" id="k-records">—</div><div class="kpi-l">Records MongoDB</div></div>
-  <div class="kpi"><div class="kpi-v" id="k-speed">—</div><div class="kpi-l">Vit. moy. mph</div></div>
   <div class="live">
     <div class="dot" id="dot"></div>
     <span class="live-txt" id="live-txt">Connexion…</span>
@@ -183,13 +182,6 @@
       <div class="overlay-txt" id="overlay-txt">Lecture MongoDB…</div>
     </div>
     <div id="map"></div>
-    <div class="legend">
-      <h4>Congestion</h4>
-      <div class="lrow"><div class="ldot" style="background:var(--free)"></div>Fluide &gt; 60 mph</div>
-      <div class="lrow"><div class="ldot" style="background:var(--light)"></div>Léger 45–60</div>
-      <div class="lrow"><div class="ldot" style="background:var(--moderate)"></div>Modéré 25–45</div>
-      <div class="lrow"><div class="ldot" style="background:var(--heavy)"></div>Dense &lt; 25</div>
-    </div>
   </div>
 
 </div>
@@ -197,19 +189,9 @@
 <script>
 const API = '/api';
 
-const C = {
-  free_flow: '#2ecc71',
-  light:     '#9bdb4d',
-  moderate:  '#f39c12',
-  heavy:     '#e74c3c',
-};
-
-const LABELS = {
-  free_flow: 'Fluide',
-  light:     'Léger',
-  moderate:  'Modéré',
-  heavy:     'Dense',
-};
+// Couleurs de congestion supprimées (PEMS-BAY.csv éliminé) — tout en vert statique pour l'instant
+// const C = { free_flow: '#2ecc71', light: '#9bdb4d', moderate: '#f39c12', heavy: '#e74c3c' };
+// const LABELS = { free_flow: 'Fluide', light: 'Léger', moderate: 'Modéré', heavy: 'Dense' };
 
 let map, markers = {}, allSensors = [];
 
@@ -228,7 +210,8 @@ function initMap() {
 
 // ── Icône capteur ─────────────────────────────────────────
 function makeIcon(speed, cong) {
-  const color = C[cong] || '#888';
+  // Icône statique (congestion non calculée sans données de vitesse)
+  const color = '#9bdb4d';
   const s = Math.round(speed || 0);
   return L.divIcon({
     html: `<div style="
@@ -275,7 +258,7 @@ function renderList(sensors) {
   const el = document.getElementById('sensor-list');
   el.innerHTML = '';
   sensors.forEach(s => {
-    const color = '#9bdb4d';  // couleur par défaut (lights)
+    const color = '#9bdb4d';  // Couleur statique (congestion non calculée sans données de vitesse)
 
     const div = document.createElement('div');
     div.className  = 'sitem';
@@ -309,7 +292,7 @@ function renderMarkers(sensors) {
 
   sensors.forEach(s => {
     if (!s.lat || !s.lon) return;
-    const color = '#9bdb4d';  // couleur par défaut (light)
+    const color = '#9bdb4d';  // Couleur statique (congestion non calculée sans données de vitesse)
 
     const m = L.marker([s.lat, s.lon], { icon: makeIcon(0, 'light') });
 
