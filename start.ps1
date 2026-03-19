@@ -1,6 +1,5 @@
 # =============================================================
 #  PEMS-BAY Node.js — start.ps1  (Windows PowerShell)
-#  Sans Docker Compose — commandes docker manuelles
 # =============================================================
 
 $ErrorActionPreference = "Continue"
@@ -88,4 +87,3 @@ Write-Host "║  Carte  →  http://localhost:8080                 ║" -Foregro
 Write-Host "║  API    →  http://localhost:5000/api/health      ║" -ForegroundColor White
 Write-Host "╚══════════════════════════════════════════════════╝" -ForegroundColor Green
 Write-Host ""
-Write-Host "Voir les logs : docker logs -f pems_backend" -ForegroundColor Gray
