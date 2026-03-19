@@ -4,18 +4,18 @@
 
 Ce projet est un **moniteur de trafic (PEMS-BAY)** avec un backend Node.js + MongoDB et une interface frontend JavaScript/Leaflet.
 
-## 🚀 Objectif
+## Objectif
 
-- Ingestions des fichiers de données CSV (`metadata.csv` + `PEMS-BAY.csv`) dans une base **MongoDB**.
+- Ingestions des fichiers de données CSV (`metadata.csv` ) dans une base **MongoDB**.
 - Exposer une API REST qui retourne la liste des capteurs et leurs métadonnées.
-- Afficher les capteurs sur une carte interactive (Leaflet/OpenStreetMap) dans un frontend statique.
+- Afficher les capteurs sur une carte interactive (OpenStreetMap) dans un frontend statique.
 
 ## 🧱 Architecture
 
 - **backend/** : service Node.js + Express qui lit les CSV et peuple MongoDB.
 - **frontend/** : application HTML/CSS/JS qui consomme l'API et affiche les capteurs sur une carte.
 - **mongo-init/** : script d'initialisation MongoDB pour créer l’utilisateur et la base.
-- **data/** : contient les fichiers CSV (`metadata.csv`, `PEMS-BAY.csv`).
+- **data/** : contient les fichiers CSV (`metadata.csv`).
 
 ## ▶️ Lancer le projet (Windows)
 
