@@ -1,4 +1,4 @@
-# PEMS-BAY Traffic Monitor (TP 2)
+# PEMS-BAY Traffic Monitor 
 
 **Nom du projet :** PEMS-BAY Traffic Monitor
 
@@ -10,14 +10,14 @@ Ce projet est un **moniteur de trafic (PEMS-BAY)** avec un backend Node.js + Mon
 - Exposer une API REST qui retourne la liste des capteurs et leurs métadonnées.
 - Afficher les capteurs sur une carte interactive (OpenStreetMap) dans un frontend statique.
 
-## 🧱 Architecture
+## Architecture
 
 - **backend/** : service Node.js + Express qui lit les CSV et peuple MongoDB.
 - **frontend/** : application HTML/CSS/JS qui consomme l'API et affiche les capteurs sur une carte.
 - **mongo-init/** : script d'initialisation MongoDB pour créer l’utilisateur et la base.
 - **data/** : contient les fichiers CSV (`metadata.csv`).
 
-## ▶️ Lancer le projet (Windows)
+## Lancer le projet (Windows)
 
 Le script `start.ps1` s’occupe de créer le réseau Docker, démarrer MongoDB, builder et lancer le backend + frontend.
 
@@ -33,20 +33,20 @@ Ensuite, accéder à :
 - Interface : http://localhost:8080
 - API santé : http://localhost:5000/api/health
 
-## 🧩 Endpoints API utiles
+## Endpoints API utiles
 
 - `GET /api/health` — Vérifie que MongoDB est connecté.
 - `GET /api/sensors` — Renvoie la liste des capteurs (métadonnées + position).
 
-> ⚠️ Le frontend utilise `GET /api/stats` et `/api/sensors`. Si l’un de ces endpoints ne répond pas, le frontend peut ne pas afficher correctement les données.
+>  Le frontend utilise `GET /api/stats` et `/api/sensors`. Si l’un de ces endpoints ne répond pas, le frontend peut ne pas afficher correctement les données.
 
-## 🗂️ Datasets attendus
+## Datasets attendus
 
 Le backend attend un fichier dans `data/` :
 
 - `metadata.csv` : coordonnées et informations des capteurs.
 
-## 🔧 Configuration
+## Configuration
 
 Le backend est configurable via variables d'environnement :
 
@@ -55,7 +55,7 @@ Le backend est configurable via variables d'environnement :
 - `DATA_DIR` (par défaut : `/app/data`)
 - `PORT` (par défaut : `5000`)
 
-## 🧪 Test rapide
+## Test rapide
 
 1. Lancer `start.ps1`.
 2. Vérifier la santé de l’API :
